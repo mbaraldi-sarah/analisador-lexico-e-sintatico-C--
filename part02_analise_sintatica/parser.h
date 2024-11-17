@@ -1,7 +1,4 @@
-#include <iostream>
-#include <stdexcept>
-#include <string>
-#include "scanner.h"
+#include "superheader.h"
 
 using namespace std;
 

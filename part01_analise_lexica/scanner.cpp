@@ -1,4 +1,4 @@
-#include "scanner.h"
+#include "superheader.h"
 
 // Construtor que recebe uma string com o nome do arquivo de entrada e preenche input com seu conteúdo.
 Scanner::Scanner(string fileName)

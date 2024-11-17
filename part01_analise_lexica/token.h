@@ -1,7 +1,3 @@
-#include <iostream>
-#include <cctype> // Character functions
-#include <string>
-
 using namespace std;
 
 // Token types will be converted to integers later
@@ -46,7 +42,17 @@ enum TokenType
 
     ASSIGNMENT,            // 32 - = (assignment)
     RESERVED_WORD,         // 33 - Reserved word (e.g., if, else)
-    END_OF_FILE            // 34 - End of file
+    END_OF_FILE,           // 34 - End of file
+
+    // Add reserved words here
+    INT,                   // 35 - int
+    CHAR,                  // 36 - char
+    VOID,                  // 37 - void
+    IF,                    // 38 - if
+    ELSE,                  // 39 - else
+    WHILE,                 // 40 - while
+    FOR,                   // 41 - for
+    RETURN                 // 42 - return
 };
 
 class Token 

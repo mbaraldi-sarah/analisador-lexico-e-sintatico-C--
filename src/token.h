@@ -1,48 +1,126 @@
 #include <iostream>
-#include <ctype.h>//Funções de caracteres
+#include <cctype> // Character functions
 #include <string>
 
 using namespace std;
 
-enum Names 
+// Token types will be converted to integers later
+enum TokenType 
 {
-    UNDEF,
-    ID,//1
-    PLUS,//2
-    MINUS,//3
-    MULT,//4
-    DIV,//5
-    NUMBER,//6
-    LPAREN,//7
-    RPAREN,//8
-    //Continuar
-    //Nomes e atributos dos tokens da linguagem
-    END_OF_FILE
+    UNDEFINED,             // 0  - Undefined token
+    ID,                    // 1  - Identifier (e.g., variable names)
+    DIGIT,                 // 2  - Integer literal
+    LETTER,                // 3  - Letter [a-zA-Z]
+    INTEGER_CONSTANT,      // 4  - digit+
+    CHAR_CONSTANT,         // 5  - 'ch' | '\n' | '\0', onde ch é qualquer caractere ASCII imprimível (como especificado pela função isprint(), exceto \ e aspas simples.
+    STRING_CONSTANT,       // 6  - "(ch)*", onde ch é qualquer caractere ASCII imprimível (como especificado pela função isprint(), exceto aspas duplas e \n.
+
+    RELATIONAL_OPERATOR,   // 7  - Relational operator
+    EQUAL,                 // 8  - == (equal to)
+    NOT_EQUAL,             // 9  - != (not equal to)
+    GREATER_THAN,          // 10 - > (greater than)
+    LESS_THAN,             // 11 - < (less than)
+    GREATER_OR_EQUAL_THAN, // 12 - >= (greater or equal than)
+    LESS_OR_EQUAL_THAN,    // 13 - <= (less or equal than)
+
+    LOGICAL_OPERATOR,      // 14 - Logical operator
+    AND_OPERATOR,          // 15 - && (logical AND)
+    OR_OPERATOR,           // 16 - || (logical OR)
+    NOT_OPERATOR,          // 17 - ! (logical NOT)
+
+    ARITHMETIC_OPERATOR,   // 18 - Arithmetic operator
+    PLUS_OPERATOR,         // 19 - + (addition)
+    MINUS_OPERATOR,        // 20 - - (subtraction)
+    MULTIPLY_OPERATOR,     // 21 - * (multiplication)
+    DIVIDE_OPERATOR,       // 22 - / (division)
+
+    SEPARATOR,             // 23 - Separator
+    LEFT_BRACKET,          // 24 - ( (left parenthesis)
+    RIGHT_BRACKET,         // 25 - ) (right parenthesis)
+    LEFT_CURLY_BRACE,      // 26 - { (left curly brace)
+    RIGHT_CURLY_BRACE,     // 27 - } (right curly brace)
+    LEFT_SQUARE_BRACKET,   // 28 - [ (left square bracket)
+    RIGHT_SQUARE_BRACKET,  // 29 - ] (right square bracket)
+    SEMICOLON,             // 30 - ; (semicolon)
+    COMMA,                 // 31 - , (comma)
+
+    ASSIGNMENT,            // 32 - = (assignment)
+    RESERVED_WORD,         // 33 - Reserved word (e.g., if, else)
+    END_OF_FILE            // 34 - End of file
 };
 
 class Token 
 {
     public: 
-        int name;
-        int attribute;
-        string lexeme;
+        int type;       // Token type
+        int attribute;  // Attribute which can be empty
+        string lexeme;  // Recognized text
     
-        Token(int name)
+        // Constructors for different types of tokens
+
+        // Only type
+        Token(int type) // Example: if, else.
         {
-            this->name = name;
-            attribute = UNDEF;
+            this->type = type;
+            attribute = UNDEFINED;
+            lexeme = "";
         }
 
-        Token(int name, string l)
+        // Type and lexeme
+        Token(int type, string lexeme)
         {
-            this->name = name;
-            attribute = UNDEF;
-            lexeme = l;
+            this->type = type;
+            attribute = UNDEFINED;
+            this->lexeme = lexeme;
         }
         
-        Token(int name, int attr)
+        // Type and attribute
+        Token(int type, int attribute) 
         {
-            this->name = name;
-            attribute = attr;
+            this->type = type;
+            this->attribute = attribute;
+            lexeme = "";
         }
+
+        // Static method to return the name of the token type
+        static string getTokenTypeName(int type) {
+            static string typeNames[] = {
+                "UNDEFINED",
+                "ID",
+                "DIGIT",
+                "LETTER",
+                "INTEGER_CONSTANT",
+                "CHAR_CONSTANT",
+                "STRING_CONSTANT",
+                "RELATIONAL_OPERATOR",
+                "EQUAL",
+                "NOT_EQUAL",
+                "GREATER_THAN",
+                "LESS_THAN",
+                "GREATER_OR_EQUAL_THAN",
+                "LESS_OR_EQUAL_THAN",
+                "LOGICAL_OPERATOR",
+                "AND_OPERATOR",
+                "OR_OPERATOR",
+                "NOT_OPERATOR",
+                "ARITHMETIC_OPERATOR",
+                "PLUS_OPERATOR",
+                "MINUS_OPERATOR",
+                "MULTIPLY_OPERATOR",
+                "DIVIDE_OPERATOR",
+                "SEPARATOR",
+                "LEFT_BRACKET",
+                "RIGHT_BRACKET",
+                "LEFT_CURLY_BRACE",
+                "RIGHT_CURLY_BRACE",
+                "LEFT_SQUARE_BRACKET",
+                "RIGHT_SQUARE_BRACKET",
+                "SEMICOLON",
+                "COMMA",
+                "ASSIGNMENT",
+                "RESERVED_WORD",
+                "END_OF_FILE"
+            };
+            return typeNames[type];
+        }    
 };

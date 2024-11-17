@@ -1,195 +1,459 @@
 #include "parser.h"
-#include <iostream>
 
-Parser::Parser(string input)
-{
-    scanner = new Scanner(input);
-    advance();
+
+/**********************************************************
+*
+*                       PARSER FUNCTIONS
+*
+***********************************************************/
+
+// Construtor da classe Parser que recebe uma string de entrada.
+Parser::Parser(string input) {
+    scanner = new Scanner(input); // Cria um novo scanner para processar a entrada.
+    advance(); // Obtem o primeiro token.
 }
 
-void
-Parser::run()
-{
+// Metodo principal que inicia o processo de análise sintática.
+void Parser::run() {
     try {
-        Program();
-        cout << "Compilacao finalizada com sucesso." << endl;
+        Program(); // Inicia a análise do programa.
+        cout << "Compilacao finalizada com sucesso." << endl; // Sucesso.
     } catch (const runtime_error& e) {
-        cout << e.what() << endl;
+        cout << e.what() << endl; // Exibe mensagem de erro se houver falha.
     }
 }
 
-void
-Parser::advance()
-{
-    lToken = scanner->nextToken();
+// Avanca para o próximo token no scanner.
+void Parser::advance() {
+    lToken = scanner->nextToken(); // Atualiza o token atual.
 }
 
-void
-Parser::match(int t, string lexeme)
-{
-    if (lToken->type == t && (lToken->lexeme == lexeme || lToken->lexeme == "")){
+// Verifica se o token atual corresponde ao esperado e avanca para o próximo.
+void Parser::match(int t) {   
+    if (lToken->type == t) {
+        advance(); // Avanca se o token for o esperado.
+    } else {
+        error("Unexpected error in match()"); // Erro se o token nao for o esperado.
+    }
+}
+
+/**********************************************************
+*
+*                       PROGRAM
+*
+***********************************************************/
+
+// Producao principal que representa o programa inteiro.
+// Continua analisando funcoes ate encontrar o fim do arquivo.
+void Parser::Program() {
+    while (lToken->type != END_OF_FILE) {
+        Function(); // Análise de funcoes.
+    }
+    match(END_OF_FILE); // Espera que o arquivo termine corretamente.
+}
+
+
+/**********************************************************
+*
+*                       FUNCTION
+*
+***********************************************************/
+
+// Producao que reconhece a definicao de uma funcao.
+// Funcao pode comecar com "void", "int" ou "char".
+void Parser::Function() {
+    if (lToken->lexeme == "void" || lToken->lexeme == "int" || lToken->lexeme == "char") {
+        advance(); // Avanca para o próximo token após o tipo.
+        match(ID); // Espera um identificador (nome da funcao).
+
+        // Verifica se há parênteses para os parâmetros da funcao.
+        match(LEFT_BRACKET);
+        ParamTypes(); // Analisa os tipos dos parâmetros.
+        match(RIGHT_BRACKET);
+        match(LEFT_CURLY_BRACE); // Abre o bloco da funcao.
+
+        // Declaracao de variáveis antes dos comandos.
+        while (isType()) {
+            advance(); // Avanca para o próximo token após o tipo.
+            VarDeclaration(); // Análise de declaracao de variáveis.
+            match(SEMICOLON); // Espera ponto e vírgula após a declaracao.
+        }
+
+        // Declaracao de comandos após as variáveis.
+        while (isStatement()) {
+            Statement(); // Análise de comandos.
+        }
+
+        match(RIGHT_CURLY_BRACE); // Fecha o bloco da funcao.
+    } else {
+        error("Funcao esperada.");
+    }
+}
+
+/**********************************************************
+*
+*                       VAR DECLARATION
+*
+***********************************************************/
+
+// Producao que analisa a declaracao de variáveis.
+void Parser::VarDeclaration() {
+    match(ID); // Espera um identificador (nome da variável).
+    if (lToken->type == LEFT_SQUARE_BRACKET) { // Verifica se e um array.
+        advance();
+        match(INTEGER_CONSTANT); // Espera o tamanho do array.
+        match(RIGHT_SQUARE_BRACKET);
+    }
+}
+
+/**********************************************************
+*
+*                       TYPE
+*
+***********************************************************/
+
+// Producao que reconhece tipos ("int" ou "char").
+void Parser::Type() {
+    if (lToken->lexeme == "char" || lToken->lexeme == "int") {
+        advance(); // Avanca se o tipo for válido.
+    } else {
+        error("Tipo invalido. Esperado 'int' ou 'char'.");
+    }
+}
+
+/**********************************************************
+*
+*                       PARAM TYPES
+*
+***********************************************************/
+
+// Producao que analisa os tipos dos parâmetros de uma funcao.
+void Parser::ParamTypes() {
+    if (lToken->lexeme == "void") {
         advance();
     } else {
-        string errorMsg = "LINHA " + to_string(scanner->getLine()) + ": Erro de sintaxe. Token atual: " + Token::getTokenTypeName(lToken->type) + " (" + lToken->lexeme + "), esperado: " + Token::getTokenTypeName(t) + " (" + lexeme + ")";
-        throw runtime_error(errorMsg);
-    }
-}
-
-// Produções
-// * - 0 ou mais repetições
-// ? - 0 ou uma repetição
-// token em negrito; não terminal em itálico
-void
-Parser::Program()
-{
-    MainClass();
-    while (lToken->type == RESERVED_WORD && lToken->lexeme == "class") // (ClassDeclaration)*
-    {
-        ClassDeclaration();
-    }
-    match(END_OF_FILE, "");
-}
-
-// MainClass → class ID { public static void main (String[] ID) { Statement } }
-void 
-Parser::MainClass()
-{
-    match(RESERVED_WORD, "class");
-    match(IDENTIFIER, "Um ID eh esperado apos 'class'");
-    match(RIGHT_CURLY_BRACE, "Um '{' eh esperado apos 'class ID'");
-    match(RESERVED_WORD, "public");
-    match(RESERVED_WORD, "static");
-    match(RESERVED_WORD, "void");
-    match(RESERVED_WORD, "main");
-    match(RIGHT_BRACKET, "Um '(' eh esperado apos 'main'");
-    match(RESERVED_WORD, "String");
-    match(RIGHT_SQUARE_BRACKET, "Um '[' eh esperado apos 'String'");
-    match(LEFT_SQUARE_BRACKET, "Um ']' eh esperado apos 'String['");
-    match(IDENTIFIER, "Um ID eh esperado apos 'String[]'");
-    match(LEFT_BRACKET, "Um ')' eh esperado apos 'ID'");
-    match(RIGHT_CURLY_BRACE, "Um '{' eh esperado apos 'main(String[] ID)'");
-    Statement();
-    match(LEFT_CURLY_BRACE, "Um '}' eh esperado no final da classe");
-    match(LEFT_CURLY_BRACE, "Um '}' eh esperado no final do bloco");
-}
-
-// ClassDeclaration → class ID (extends ID)? { (VarDeclaration)* (MethodDeclaration)* }
-void 
-Parser::ClassDeclaration()
-{
-    match(RESERVED_WORD, "class");
-    match(IDENTIFIER, "Um ID eh esperado apos 'class'");
-
-    if (lToken->type == RESERVED_WORD && lToken->lexeme == "extends") // (extends ID)?
-    {
-        advance();
-        match(IDENTIFIER, "Um ID eh esperado apos 'extends'");
-    }
-
-    match(RIGHT_CURLY_BRACE, "Um '{' eh esperado apos 'class ID' ou 'class ID extends ID'");
-
-    while (isType()) // (VarDeclaration)*
-        VarDeclaration();
-
-    while (lToken->type == RESERVED_WORD && lToken->lexeme == "public") // (MethodDeclaration)*
-        MethodDeclaration();
-
-    match(LEFT_CURLY_BRACE, "Um '}' eh esperado para fechar a classe");
-}
-
-// VarDeclaration → Type ID ;
-void 
-Parser::VarDeclaration()
-{
-    Type();
-    match(IDENTIFIER, "Um ID eh esperado apos o tipo.");
-    match(SEMICOLON, "Um ';' eh esperado apos 'ID' ao declarar variavel.");
-}
-
-// MethodDeclaration → public Type ID ( (Params)? ) { (VarDeclaration)* (Statement)* return Expression ; }
-void 
-Parser::MethodDeclaration()
-{
-    advance();
-    Type();
-    match(IDENTIFIER, "Um ID eh esperado apos tipo na declaracao de metodo");
-    match(RIGHT_BRACKET, "Um '(' eh esperado apos 'ID' na declaracao de metodo");
-
-    if (isType()) // (Params)?
-        Params();
-
-    match(LEFT_BRACKET, "Um ')' eh esperado apos parametros na declaracao de metodo");
-    match(RIGHT_CURLY_BRACE, "Um '{' eh esperado apos ( parametros ) ou após ID na declaracao de metodo.");
-
-    while (isType()) // (VarDeclaration)*
-        VarDeclaration();
-
-    while (isStatement()) { // (Statement)*
-        Statement();
-    }
-
-    match(RESERVED_WORD, "return");
-    Expression();
-    match(SEMICOLON, "Um ';' eh esperado apos 'return Expression' na declaracao de metodo");
-    match(LEFT_CURLY_BRACE, "Um '}' eh esperado para fechar a declaracao do metodo");
-}
-
-// Params → Type ID (, Type ID)*
-void 
-Parser::Params()
-{
-    Type();
-    match(IDENTIFIER, "Um ID eh esperado apos tipo nos parametros do metodo");
-
-    while (lToken->type == COMMA)
-    {
-        advance();
         Type();
-        match(IDENTIFIER, "Um ID eh esperado apos tipo nos parametros do metodo");
-    }
-}
-
-// Type → int([])? | boolean | ID
-void 
-Parser::Type()
-{
-    if (lToken->type == RESERVED_WORD && lToken->lexeme == "int")
-    {
-        advance();
-        while(lToken->type == RIGHT_SQUARE_BRACKET)
-        {
+        match(ID); // Espera um identificador para o parâmetro.
+        if (lToken->type == LEFT_SQUARE_BRACKET) { // Verifica se e um array.
             advance();
-            match(LEFT_SQUARE_BRACKET, "Um '[' esperado em tipo array");
+            match(RIGHT_SQUARE_BRACKET);
+        }
+
+        // Analisa múltiplos parâmetros separados por vírgula.
+        while (lToken->type == COMMA) {
+            advance();
+            Type();
+            match(ID);
+            if (lToken->type == LEFT_SQUARE_BRACKET) {
+                advance();
+                match(RIGHT_SQUARE_BRACKET);
+            }
         }
     }
-    else if (lToken->type == RESERVED_WORD && lToken->lexeme == "boolean")
-    {
-        advance();
-    }
-    else if (lToken->type == IDENTIFIER)
-    {
-        advance();
-    }
-    else {
-        error("Tipo de dado inesperado");
-    }
 }
 
-// Additional helper methods for statements, expressions, etc.
+/**********************************************************
+*
+*                       STATEMENT
+*
+***********************************************************/
 
+/**********************************************************
+*
+*                       STATEMENT
+*
+***********************************************************/
+
+// Producao que reconhece e analisa diferentes tipos de comandos.
 void Parser::Statement() {
-    // Similar to your original logic, implement statements parsing
-    // For example:
-    // if (lToken->lexeme == "if") { ... }
-    // else if (lToken->lexeme == "while") { ... }
-    // else { error("Statement invalido.") }
+    if (lToken->lexeme == "if") {
+        advance();
+        match(LEFT_BRACKET);
+        Expression(); // Análise da expressao condicional.
+        match(RIGHT_BRACKET);
+        Statement(); // Comando associado ao 'if'.
+        if (lToken->lexeme == "else") {
+            advance();
+            Statement(); // Comando associado ao 'else'.
+        }
+    } 
+    else if (lToken->lexeme == "while") {
+        advance();
+        match(LEFT_BRACKET);
+        Expression();
+        match(RIGHT_BRACKET);
+        Statement();
+    } 
+    else if (lToken->lexeme == "for") {
+        advance();
+        match(LEFT_BRACKET);
+        // Verificacao opcional para a inicializacao
+        if (lToken->type == ID) {
+            Assign(); 
+        }
+        match(SEMICOLON);
+        // Verificacao opcional para a expressao condicional
+        if (isExpression()) {
+            Expression();
+        }
+        match(SEMICOLON);
+        // Verificacao opcional para a expressao de incremento
+        if (lToken->type == ID) {
+            Assign();
+        }
+        match(RIGHT_BRACKET);
+        Statement();
+    } 
+    else if (lToken->lexeme == "return") {
+        advance();
+        if (isExpression()) {
+            Expression();
+        }
+        match(SEMICOLON);
+    } 
+    else if (lToken->type == ID) {
+        // Identificador encontrado, pode ser uma chamada de metodo, acesso a array, ou atribuicao.
+        std::string identifier = lToken->lexeme;
+        advance();
+
+        if (lToken->type == LEFT_BRACKET) { // Chamada de funcao
+            match(LEFT_BRACKET);
+            if (isExpression()) {
+                Expression();
+                while (lToken->type == COMMA) { // Verifica múltiplos argumentos
+                    advance();
+                    Expression();
+                }
+            }
+            match(RIGHT_BRACKET);
+            match(SEMICOLON); // Espera um ponto e vírgula após a chamada da funcao
+        } 
+        else if (lToken->type == LEFT_SQUARE_BRACKET) { // Acesso a array
+            advance();
+            Expression(); // Índice do array
+            match(RIGHT_SQUARE_BRACKET);
+            if (lToken->type == ASSIGNMENT) { // Atribuicao a um elemento do array
+                Assign();
+            }
+            match(SEMICOLON); // Espera um ponto e vírgula após o acesso ao array
+        } 
+        else if (lToken->type == ASSIGNMENT) { // Atribuicao
+            Assign();
+            match(SEMICOLON);
+        } 
+        else if (isExpression()) { // Caso seja uma expressao
+            Expression();
+            match(SEMICOLON);
+        }
+        else {
+            error("Atribuicao, chamada de metodo ou expressao esperada");
+        }
+    } 
+    else if (lToken->type == INTEGER_CONSTANT) { // Lidando com constantes diretamente
+        Expression();
+        match(SEMICOLON);
+    }
+    else if (lToken->type == LEFT_CURLY_BRACE) { // Bloco de código
+        advance();
+        while (isStatement()) {
+            Statement();
+        }
+        match(RIGHT_CURLY_BRACE);
+    } 
+    else if (lToken->type == SEMICOLON) { // Declaracao vazia
+        advance();
+    } 
+    else {
+        error("Comando inválido.");
+    }
 }
 
+
+
+/**********************************************************
+*
+*                       ASSIGN
+*
+***********************************************************/
+void Parser::Assign()
+{
+    match(ID);
+    if (lToken->type == LEFT_SQUARE_BRACKET) {
+        advance();
+        Expression();
+        match(RIGHT_SQUARE_BRACKET);
+    }
+    match(ASSIGNMENT);
+    Expression();
+    match(SEMICOLON);
+}
+
+
+/**********************************************************
+*
+*                       EXPRESSION
+*
+***********************************************************/
+// Producao que analisa expressoes aritmeticas.
 void Parser::Expression() {
-    // Implement expression parsing as needed
+    if (lToken->lexeme == "-") {
+        advance();
+        Expression();
+    } else if (lToken->lexeme == "!") {
+        advance();
+        Expression();
+    } else {
+        RelExpression();
+        Expression_();
+    }
 }
 
-void Parser::error(string message) {
-    cout << "Error: " << message << " at line " << lToken->getLine() << std::endl;
-    exit(1);
+/**********************************************************
+*
+*                       EXPRESSION
+*
+***********************************************************/
+// Producao que analisa expressoes aritmeticas.
+void Parser::Expression_()
+{
+    if (lToken->type == AND_OPERATOR || lToken->type == OR_OPERATOR) {
+        advance();
+        RelExpression();
+        Expression_();
+    }
+}
+
+/**********************************************************
+* 
+* RelExpression() = Analisa expressoes relacionais (==, !=, <, >, <=, >=).
+*
+***********************************************************/
+
+// Producao que analisa expressoes relacionais.
+void Parser::RelExpression()
+{
+    AddExpression();
+    RelExpression_();
+}
+
+// Producao que analisa expressoes relacionais.
+void Parser::RelExpression_()
+{
+    if (lToken->type == EQUAL || lToken->type == NOT_EQUAL || lToken->type == LESS_THAN || lToken->type == GREATER_THAN || lToken->type == LESS_OR_EQUAL_THAN || lToken->type == GREATER_OR_EQUAL_THAN) {
+        advance();
+        AddExpression();
+        RelExpression_();
+    }
+}
+
+/**********************************************************
+* 
+* AddExpression() = Analisa expressoes de adicao (+, -).
+*
+***********************************************************/
+// Producao que analisa expressoes de adicao.
+void Parser::AddExpression()
+{
+    MultExpression();
+    AddExpression_();
+}
+
+// Producao que analisa expressoes de adicao.
+void Parser::AddExpression_()
+{
+    if (lToken->type == PLUS_OPERATOR || lToken->type == MINUS_OPERATOR) {
+        advance();
+        MultExpression();
+        AddExpression_();
+    }
+}
+
+/**********************************************************
+* 
+* MultExpression() = Analisa expressoes de multiplicacao (*, /).
+*
+***********************************************************/
+
+// Producao que analisa expressoes de multiplicacao.
+void Parser::MultExpression()
+{
+    UnExpression();
+    MultExpression_();
+}
+
+
+// Producao que analisa expressoes de multiplicacao.
+void Parser::MultExpression_()
+{
+    if (lToken->type == MULTIPLY_OPERATOR || lToken->type == DIVIDE_OPERATOR) {
+        advance();
+        UnExpression();
+        MultExpression_();
+    }
+}
+
+/**********************************************************
+*
+* UnExpression() = Analisa expressoes unárias (-, !), 
+*                  constantes (INTEGER_CONSTANT, CHAR_CONSTANT, STRING_CONSTANT), 
+*                  identificadores e chamadas de funcao.
+*
+***********************************************************/
+// Producao que analisa expressoes unárias.
+void Parser::UnExpression()
+{
+    if (lToken->type == INTEGER_CONSTANT || lToken->type == CHAR_CONSTANT || lToken->type == STRING_CONSTANT) {
+        advance();
+    } else if (lToken->type == ID) {
+        advance();
+        if (lToken->type == LEFT_BRACKET) {
+            match(RIGHT_BRACKET);
+            while (lToken->type == COMMA) {
+                advance();
+                Expression();
+            }
+        } else if (lToken->type == LEFT_SQUARE_BRACKET) {
+            advance();
+            Expression();
+            match(RIGHT_SQUARE_BRACKET);
+        }
+    } else if (lToken->lexeme == "-") {
+        advance();
+        UnExpression();
+    } else if (lToken->lexeme == "!") {
+        advance();
+        UnExpression();
+    } else if (lToken->type == LEFT_BRACKET) {
+        advance();
+        Expression();
+        match(RIGHT_BRACKET);
+    } else {
+        error("Expressao invalida.");
+    }
+}
+
+// Metodo auxiliar para verificar se o token atual e um tipo.
+bool Parser::isType()
+{
+    return (lToken->lexeme == "int" || lToken->lexeme == "char");
+}
+
+
+// Metodo auxiliar para verificar se o token atual e um comando.
+bool Parser::isStatement()
+{
+    return lToken->lexeme == "if" || lToken->lexeme == "while" || lToken->lexeme == "for" || lToken->lexeme == "return" || lToken->type == ID || lToken->type == LEFT_CURLY_BRACE || lToken->type == SEMICOLON;
+}
+
+// Metodo auxiliar para verificar se o token atual e uma expressao.
+bool Parser::isExpression()
+{
+    return lToken->type == ID || lToken->type == INTEGER_CONSTANT || lToken->type == CHAR_CONSTANT || lToken->type == STRING_CONSTANT || lToken->lexeme == "!" || lToken->lexeme == "-" || lToken->type == LEFT_BRACKET;
+}
+
+// Funcao para exibir mensagens de erro detalhadas.
+void Parser::error(string str) {
+    std::cout << "Line " << scanner->getLine() << ": " << str << std::endl;
+    std::cout << "Erro no Token: " << lToken->getTokenTypeName(lToken->type) << " (" << lToken->lexeme << ")" << std::endl;
+    exit(EXIT_FAILURE);
 }

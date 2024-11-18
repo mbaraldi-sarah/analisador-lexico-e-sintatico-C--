@@ -16,7 +16,7 @@ Parser::Parser(string input, SymbolTable* table) : symbolTable(table) {
 void Parser::run() {
     try {
         Program(); // Inicia a análise do programa.
-        cout << "Compilacao finalizada com sucesso." << endl; // Sucesso.
+        cout << "Compilation finished successfully." << endl; // Success.
     } catch (const runtime_error& e) {
         cout << e.what() << endl; // Exibe mensagem de erro se houver falha.
     }
@@ -32,7 +32,7 @@ void Parser::match(int t) {
     if (lToken->type == t) {
         advance(); // Avanca se o token for o esperado.
     } 
-    else {
+    else { 
         error("Unexpected error in match()"); // Erro se o token nao for o esperado.
     }
 }
@@ -64,6 +64,10 @@ void Parser::Program() {
 void Parser::Function() {
     if (lToken->lexeme == "void" || lToken->lexeme == "int" || lToken->lexeme == "char") {
         advance(); // Avanca para o próximo token após o tipo.
+        
+        if (lToken->type == RESERVED_WORD) {
+            error("Reserved word cannot be used as function name.");
+        }
         match(ID); // Espera um identificador (nome da funcao).
 
         // Verifica se há parênteses para os parâmetros da funcao.
@@ -86,7 +90,7 @@ void Parser::Function() {
 
         match(RIGHT_CURLY_BRACE); // Fecha o bloco da funcao.
     } else {
-        error("Funcao esperada.");
+        error("Function expected.");
     }
 }
 
@@ -120,7 +124,7 @@ void Parser::Type() {
     if (lToken->lexeme == "char" || lToken->lexeme == "int") {
         advance(); // Avanca se o tipo for válido.
     } else {
-        error("Tipo invalido. Esperado 'int' ou 'char'.");
+        error("Invalid type. Expected 'int' or 'char'.");
     }
 }
 
@@ -248,7 +252,7 @@ void Parser::Statement() {
             match(SEMICOLON);
         }
         else {
-            error("Atribuicao, chamada de metodo ou expressao esperada");
+            error("Assignment, method call, or expression expected");
         }
     } 
     else if (lToken->type == LEFT_CURLY_BRACE) { // Bloco de código
@@ -262,7 +266,7 @@ void Parser::Statement() {
         advance();
     } 
     else {
-        error("Comando invalido.");
+        error("Invalid Statement.");
     }
 }
 
@@ -403,6 +407,7 @@ void Parser::UnExpression()
     if (lToken->type == INTEGER_CONSTANT || lToken->type == CHAR_CONSTANT || lToken->type == STRING_CONSTANT) {
         advance();
     } else if (lToken->type == ID) {
+        isDeclared();
         advance();
         if (lToken->type == LEFT_BRACKET) {
             match(RIGHT_BRACKET);
@@ -426,7 +431,7 @@ void Parser::UnExpression()
         Expression();
         match(RIGHT_BRACKET);
     } else {
-        error("Expressao invalida.");
+        error("Invalid expression.");
     }
 }
 
@@ -434,18 +439,22 @@ void Parser::UnExpression()
 void Parser::isDeclared()
 {
     if (symbolTable->get(lToken->lexeme) == nullptr) {
-        error("Identificador nao declarado: " + lToken->lexeme);
+        error("Not declaration of identifier: " + lToken->lexeme);
     }
 }
 
 // Metodo para verificar se houve uma declaracao duplicada.
 void Parser::checkDuplicatedDeclaration() {
 
+    if (symbolTable->get(lToken->lexeme) != nullptr && lToken->type == RESERVED_WORD) {
+            error("Reserved word cannot be used as ID.");
+    }
+
     if (symbolTable->get(lToken->lexeme) != nullptr) {
         error("Duplicated declaration of identifier: " + lToken->lexeme);
-    } else {
-        symbolTable->add(new STEntry(new Token(ID, lToken->lexeme), false));
-    }
+    } 
+    
+    symbolTable->add(new STEntry(new Token(ID, lToken->lexeme), false));
 }   
 
 // Metodo auxiliar para verificar se o token atual e um tipo.

@@ -1,14 +1,22 @@
-void main (int abc123, char lucas) {
+void main (int abc123, char lucas, int carlos, char carlos) {
     int ola[1];
-    int ola;
+    char rafa[4];
+    int joao;
+
     while (1 == 1) {
         return 1;
     }
+
+    rafa = 4;
+
+    lucas = 2;
+
+    joao = 2;
+    
     if (2 * 2 != 4);
 
     if (2 * 2 != 4)
         carlos[5]; 
-    else
-        2 * 6;
-}
 
+    return lucas == 1;
+}

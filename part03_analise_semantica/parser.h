@@ -43,6 +43,9 @@ private:
     bool isType();           // Check if the current token is a type
     bool isStatement();      // Check if the current token is a statement
     bool isExpression();     // Check if the current token is an expression
+    
+    void isDeclared();      // Check if the current token is declared
+    void checkDuplicatedDeclaration(); // Check if the current token is duplicated
 
     // Method to throw a syntax error with a message
     void error(string str);

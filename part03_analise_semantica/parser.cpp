@@ -7,7 +7,7 @@
 ***********************************************************/
 
 // Construtor da classe Parser que recebe uma string de entrada.
-Parser::Parser(string input, SymbolTable* table) {
+Parser::Parser(string input, SymbolTable* table) : symbolTable(table) {
     scanner = new Scanner(input); // Cria um novo scanner para processar a entrada.
     advance(); // Obtem o primeiro token.
 }
@@ -28,10 +28,11 @@ void Parser::advance() {
 }
 
 // Verifica se o token atual corresponde ao esperado e avanca para o próximo.
-void Parser::match(int t) {   
+void Parser::match(int t) {      
     if (lToken->type == t) {
         advance(); // Avanca se o token for o esperado.
-    } else {
+    } 
+    else {
         error("Unexpected error in match()"); // Erro se o token nao for o esperado.
     }
 }
@@ -97,6 +98,9 @@ void Parser::Function() {
 
 // Producao que analisa a declaracao de variáveis.
 void Parser::VarDeclaration() {
+    
+    checkDuplicatedDeclaration();
+
     match(ID); // Espera um identificador (nome da variável).
     if (lToken->type == LEFT_SQUARE_BRACKET) { // Verifica se e um array.
         advance();
@@ -132,6 +136,7 @@ void Parser::ParamTypes() {
         advance();
     } else {
         Type();
+        checkDuplicatedDeclaration();
         match(ID); // Espera um identificador para o parâmetro.
         if (lToken->type == LEFT_SQUARE_BRACKET) { // Verifica se e um array.
             advance();
@@ -142,6 +147,7 @@ void Parser::ParamTypes() {
         while (lToken->type == COMMA) {
             advance();
             Type();
+            checkDuplicatedDeclaration();
             match(ID);
             if (lToken->type == LEFT_SQUARE_BRACKET) {
                 advance();
@@ -156,13 +162,12 @@ void Parser::ParamTypes() {
 *                       STATEMENT
 *
 ***********************************************************/
-
 // Producao que reconhece e analisa diferentes tipos de comandos.
 void Parser::Statement() {
     if (lToken->lexeme == "if") {
         advance();
         match(LEFT_BRACKET);
-        Expression(); // Análise da expressao condicional.
+        Expression(); // Análise da expressão condicional.
         match(RIGHT_BRACKET);
         Statement(); // Comando associado ao 'if'.
         if (lToken->lexeme == "else") {
@@ -173,25 +178,27 @@ void Parser::Statement() {
     else if (lToken->lexeme == "while") {
         advance();
         match(LEFT_BRACKET);
-        Expression();
+        Expression(); // Expressão de controle do loop.
         match(RIGHT_BRACKET);
-        Statement();
+        Statement(); // Comando dentro do laço.
     } 
     else if (lToken->lexeme == "for") {
         advance();
         match(LEFT_BRACKET);
-        // Verificacao opcional para a inicializacao
+        // Verificação opcional para a inicialização
         if (lToken->type == ID) {
+            isDeclared();
             Assign(); 
         }
         match(SEMICOLON);
-        // Verificacao opcional para a expressao condicional
+        // Verificação opcional para a expressão condicional
         if (isExpression()) {
             Expression();
         }
         match(SEMICOLON);
-        // Verificacao opcional para a expressao de incremento
+        // Verificação opcional para a expressão de incremento
         if (lToken->type == ID) {
+            isDeclared();
             Assign();
         }
         match(RIGHT_BRACKET);
@@ -205,8 +212,9 @@ void Parser::Statement() {
         match(SEMICOLON);
     } 
     else if (lToken->type == ID) {
-        // Identificador encontrado, pode ser uma chamada de metodo, acesso a array, ou atribuicao.
-        std::string identifier = lToken->lexeme;
+        // Identificador encontrado, pode ser uma chamada de método, acesso a array, ou atribuição.
+        string identifier = lToken->lexeme;
+        isDeclared();
         advance();
 
         if (lToken->type == LEFT_BRACKET) { // Chamada de funcao
@@ -231,7 +239,8 @@ void Parser::Statement() {
             match(SEMICOLON); // Espera um ponto e vírgula após o acesso ao array
         } 
         else if (lToken->type == ASSIGNMENT) { // Atribuicao
-            Assign();
+            advance();
+            Expression();
             match(SEMICOLON);
         } 
         else if (isExpression()) { // Caso seja uma expressao
@@ -242,10 +251,6 @@ void Parser::Statement() {
             error("Atribuicao, chamada de metodo ou expressao esperada");
         }
     } 
-    else if (lToken->type == INTEGER_CONSTANT) { // Lidando com constantes diretamente
-        Expression();
-        match(SEMICOLON);
-    }
     else if (lToken->type == LEFT_CURLY_BRACE) { // Bloco de código
         advance();
         while (isStatement()) {
@@ -257,7 +262,7 @@ void Parser::Statement() {
         advance();
     } 
     else {
-        error("Comando inválido.");
+        error("Comando invalido.");
     }
 }
 
@@ -269,7 +274,7 @@ void Parser::Statement() {
 *
 ***********************************************************/
 void Parser::Assign()
-{
+{   
     match(ID);
     if (lToken->type == LEFT_SQUARE_BRACKET) {
         advance();
@@ -278,7 +283,7 @@ void Parser::Assign()
     }
     match(ASSIGNMENT);
     Expression();
-    match(SEMICOLON);
+
 }
 
 
@@ -425,12 +430,29 @@ void Parser::UnExpression()
     }
 }
 
+// Metodo para verificar se o ID foi declarado.
+void Parser::isDeclared()
+{
+    if (symbolTable->get(lToken->lexeme) == nullptr) {
+        error("Identificador nao declarado: " + lToken->lexeme);
+    }
+}
+
+// Metodo para verificar se houve uma declaracao duplicada.
+void Parser::checkDuplicatedDeclaration() {
+
+    if (symbolTable->get(lToken->lexeme) != nullptr) {
+        error("Duplicated declaration of identifier: " + lToken->lexeme);
+    } else {
+        symbolTable->add(new STEntry(new Token(ID, lToken->lexeme), false));
+    }
+}   
+
 // Metodo auxiliar para verificar se o token atual e um tipo.
 bool Parser::isType()
 {
     return (lToken->lexeme == "int" || lToken->lexeme == "char");
 }
-
 
 // Metodo auxiliar para verificar se o token atual e um comando.
 bool Parser::isStatement()

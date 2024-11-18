@@ -231,7 +231,8 @@ void Parser::Statement() {
             match(SEMICOLON); // Espera um ponto e vírgula após o acesso ao array
         } 
         else if (lToken->type == ASSIGNMENT) { // Atribuicao
-            Assign();
+            advance();
+            Expression();
             match(SEMICOLON);
         } 
         else if (isExpression()) { // Caso seja uma expressao
@@ -242,10 +243,6 @@ void Parser::Statement() {
             error("Atribuicao, chamada de metodo ou expressao esperada");
         }
     } 
-    else if (lToken->type == INTEGER_CONSTANT) { // Lidando com constantes diretamente
-        Expression();
-        match(SEMICOLON);
-    }
     else if (lToken->type == LEFT_CURLY_BRACE) { // Bloco de código
         advance();
         while (isStatement()) {
@@ -278,7 +275,7 @@ void Parser::Assign()
     }
     match(ASSIGNMENT);
     Expression();
-    match(SEMICOLON);
+
 }
 
 
